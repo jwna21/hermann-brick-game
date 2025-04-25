@@ -48,6 +48,25 @@
             font-size: 32px;
             display: none;
             z-index: 100;
+            text-align: center;
+        }
+        .buttons {
+            margin-top: 20px;
+            display: none;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 0 10px;
+            background-color: #444;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 24px;
+        }
+        .button:hover {
+            background-color: #666;
         }
     </style>
 </head>
@@ -58,13 +77,23 @@
         <div class="lives">♥♥♥</div>
     </div>
     <canvas id="gameCanvas"></canvas>
-    <div id="message" class="message"></div>
+    <div id="message" class="message">
+        <div id="messageText"></div>
+        <div id="buttons" class="buttons">
+            <div class="button" id="playAgain">PLAY AGAIN?</div>
+            <div class="button" id="quit">QUIT?</div>
+        </div>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
         const livesElement = document.querySelector('.lives');
         const messageElement = document.getElementById('message');
+        const buttonsElement = document.getElementById('buttons');
+        const messageTextElement = document.getElementById('messageText');
+        const playAgainButton = document.getElementById('playAgain');
+        const quitButton = document.getElementById('quit');
         let score = 0;
         let lives = 3;
         let gameActive = true;
@@ -96,10 +125,16 @@
             soundClone.play().catch(e => console.log('Sound play error:', e));
         }
 
-        function showMessage(text) {
-            messageElement.textContent = text;
+        function showMessage(text, showButtons = false) {
+            messageTextElement.textContent = text;
             messageElement.style.display = 'block';
-            gameActive = false;
+            if (showButtons) {
+                setTimeout(() => {
+                    buttonsElement.style.display = 'block';
+                }, 3000);
+            } else {
+                buttonsElement.style.display = 'none';
+            }
         }
 
         function updateLives() {
@@ -109,11 +144,13 @@
         function checkGameEnd() {
             const remainingBricks = bricks.filter(brick => brick.visible).length;
             if (lives <= 0 && remainingBricks > 0) {
-                showMessage('GAME OVER !!');
+                showMessage('GAME OVER !!', true);
+                gameActive = false;
                 return true;
             }
             if (lives > 0 && remainingBricks === 0) {
-                showMessage('우와! 당신은 최고야!!');
+                showMessage('우와! 당신은 최고야!!', true);
+                gameActive = false;
                 return true;
             }
             return false;
@@ -213,14 +250,15 @@
             // 첫 터치에서 소리 초기화
             initSounds();
             
-            if (!gameActive) {
-                initGame();
+            // 게임오버 상태에서는 터치 무시
+            if (!gameActive && !messageElement.contains(e.target)) {
                 return;
             }
+
             const touch = e.touches[0];
             touchX = touch.clientX;
             
-            if (!ball.isLaunched) {
+            if (!ball.isLaunched && gameActive) {
                 ball.isLaunched = true;
                 ball.dx = 0;
                 ball.dy = -ball.speed;
@@ -337,6 +375,21 @@
             update();
             requestAnimationFrame(draw);
         }
+
+        // Add button event listeners
+        playAgainButton.addEventListener('click', () => {
+            messageElement.style.display = 'none';
+            buttonsElement.style.display = 'none';
+            initGame();
+        });
+
+        quitButton.addEventListener('click', () => {
+            window.close();
+            // 만약 창이 닫히지 않으면 메시지 표시
+            setTimeout(() => {
+                showMessage('브라우저를 직접 닫아주세요', false);
+            }, 300);
+        });
 
         // Initialize and start game
         window.addEventListener('resize', resizeCanvas);
