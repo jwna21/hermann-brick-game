@@ -1,0 +1,156 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d'); // 2D 렌더링 컨텍스트
+
+// 화면 크기 (캔버스 크기와 동일하게 시작)
+let screenWidth = canvas.width;
+let screenHeight = canvas.height;
+
+// 색상 (JavaScript에서는 문자열로 표현)
+const black = '#000000';
+const white = '#FFFFFF';
+const blue = '#0000FF';
+// 다른 색상들도 필요시 추가...
+const red = '#FF0000';
+const orange = '#FFA500';
+const yellow = '#FFFF00';
+const green = '#00FF00';
+
+
+// --- 게임 요소 ---
+
+// 패들 (Paddle)
+let paddleHeight = 10;
+let paddleWidth = 100;
+let paddleX = (screenWidth - paddleWidth) / 2;
+const paddleY = screenHeight - paddleHeight - 10; // 하단 고정
+const paddleSpeed = 7;
+let rightPressed = false;
+let leftPressed = false;
+
+// 공 (Ball)
+let ballRadius = 7;
+let ballX = screenWidth / 2;
+let ballY = paddleY - ballRadius - 5;
+let ballSpeedX = 4;
+let ballSpeedY = -4;
+let ballMoving = false; // 초기 상태
+
+// --- 그리기 함수 ---
+
+function drawPaddle() {
+    ctx.beginPath();
+    ctx.rect(paddleX, paddleY, paddleWidth, paddleHeight);
+    ctx.fillStyle = blue; // 패들 색상
+    ctx.fill();
+    ctx.closePath();
+}
+
+function drawBall() {
+    ctx.beginPath();
+    ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2); // 원 그리기
+    ctx.fillStyle = white; // 공 색상
+    ctx.fill();
+    ctx.closePath();
+}
+
+// --- 이벤트 리스너 (키보드 입력) ---
+document.addEventListener("keydown", keyDownHandler, false);
+document.addEventListener("keyup", keyUpHandler, false);
+
+function keyDownHandler(e) {
+    if (e.key == "Right" || e.key == "ArrowRight") {
+        rightPressed = true;
+    } else if (e.key == "Left" || e.key == "ArrowLeft") {
+        leftPressed = true;
+    } else if (e.key == " " || e.key == "Spacebar") { // 스페이스바
+        if (!ballMoving) {
+            ballMoving = true;
+            // 초기 방향 랜덤 설정 (옵션)
+            ballSpeedX = 4 * (Math.random() < 0.5 ? 1 : -1);
+            ballSpeedY = -4;
+        }
+    }
+}
+
+function keyUpHandler(e) {
+    if (e.key == "Right" || e.key == "ArrowRight") {
+        rightPressed = false;
+    } else if (e.key == "Left" || e.key == "ArrowLeft") {
+        leftPressed = false;
+    }
+}
+
+
+// --- 게임 루프 ---
+function gameLoop() {
+    // 1. 지우기 (이전 프레임)
+    ctx.clearRect(0, 0, screenWidth, screenHeight); // 캔버스 전체 지우기
+
+    // 2. 업데이트 (위치 변경, 충돌 감지 등)
+
+    // 패들 이동 업데이트
+    if (rightPressed && paddleX < screenWidth - paddleWidth) {
+        paddleX += paddleSpeed;
+    } else if (leftPressed && paddleX > 0) {
+        paddleX -= paddleSpeed;
+    }
+
+    // 공 이동 업데이트
+    if (ballMoving) {
+        ballX += ballSpeedX;
+        ballY += ballSpeedY;
+
+        // 벽 충돌 (좌/우)
+        if (ballX + ballRadius > screenWidth || ballX - ballRadius < 0) { // 반지름 고려
+            ballSpeedX = -ballSpeedX;
+            // 위치 보정 (벽에 붙는 현상 방지)
+            if(ballX + ballRadius > screenWidth) ballX = screenWidth - ballRadius;
+            if(ballX - ballRadius < 0) ballX = ballRadius;
+        }
+        // 벽 충돌 (상)
+        if (ballY - ballRadius < 0) { // 반지름 고려
+            ballSpeedY = -ballSpeedY;
+             if(ballY - ballRadius < 0) ballY = ballRadius; // 위치 보정
+        }
+        // 바닥 충돌 (일단 리셋)
+        else if (ballY + ballRadius > screenHeight) { // 반지름 고려
+            // TODO: 생명 감소 로직 필요
+             ballMoving = false; // 공 멈춤
+             // 공 위치 리셋
+             ballX = paddleX + paddleWidth / 2;
+             ballY = paddleY - ballRadius - 5;
+             ballSpeedX = 4 * (Math.random() < 0.5 ? 1 : -1);
+             ballSpeedY = -4;
+        }
+
+        // 패들 충돌
+        if (ballY + ballRadius > paddleY && // 공의 아래쪽이 패들 상단보다 아래
+            ballY - ballRadius < paddleY + paddleHeight && // 공의 위쪽이 패들 하단보다 위
+            ballX + ballRadius > paddleX && // 공의 오른쪽이 패들 왼쪽보다 오른쪽
+            ballX - ballRadius < paddleX + paddleWidth) // 공의 왼쪽이 패들 오른쪽보다 왼쪽
+        {
+             ballSpeedY = -ballSpeedY;
+             // 패들 충돌 위치에 따른 x 속도 변경 (옵션)
+            let deltaX = ballX - (paddleX + paddleWidth / 2);
+            ballSpeedX = deltaX * 0.15; // 충돌 강도 조절
+            ballY = paddleY - ballRadius; // 패들 위로 위치 보정
+        }
+
+    } else {
+        // 공이 움직이지 않을 때 패들 따라다니기
+        ballX = paddleX + paddleWidth / 2;
+        ballY = paddleY - ballRadius - 5;
+    }
+
+
+    // 3. 그리기 (패들, 공, 벽돌 등)
+    drawPaddle();
+    drawBall();
+    // drawBricks(); // 나중에 추가될 함수
+
+    // 다음 프레임 요청
+    requestAnimationFrame(gameLoop);
+}
+
+// 게임 시작
+requestAnimationFrame(gameLoop); // 최초 게임 루프 호출
