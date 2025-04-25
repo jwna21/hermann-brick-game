@@ -130,6 +130,7 @@
             messageElement.style.display = 'block';
             if (showButtons) {
                 setTimeout(() => {
+                    messageTextElement.textContent = '';
                     buttonsElement.style.display = 'block';
                 }, 3000);
             } else {
